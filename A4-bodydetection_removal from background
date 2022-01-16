@@ -1,0 +1,37 @@
+#Importing Dependencies
+import tensorflow as tf
+from tf_bodypix.api import download_model, load_model, BodyPixModelPaths #wat allows to work with the body pix model
+import cv2
+#from matplotlib import pyplot as plt
+import numpy as np
+
+
+#Detection
+#BodyPixModelPaths.MOBILENET_FLOAT_50_STRIDE_16 #bodypix model path from where it can be downloaded
+bodypix_model = load_model(download_model(BodyPixModelPaths.MOBILENET_FLOAT_50_STRIDE_16)) #loading the model
+
+
+#Real-time Webcam Feed with OpenCV
+cap = cv2.VideoCapture(0) #getting the video capture and passing thro the video capture device, 0-webcam
+while cap.isOpened(): #loop through frame
+    ret, frame = cap.read() #read the current frame from the webcam
+
+    #BODYPIX DETECTIONS
+    result = bodypix_model.predict_single(frame) #holds the result of the bodypix modelm, predicts the mask
+    mask = result.get_mask(threshold=0.5).numpy().astype(np.uint8)
+    masked_image = cv2.bitwise_and(frame, frame, mask=mask)
+
+    #Apply Virtual Background
+    neg = np.add(mask,-1) #applying inverse mask
+    inverse = np.where(neg ==-1,1,neg)
+
+    cv2.imshow("BodyPix",masked_image) #show result to user or desktop
+
+    if cv2.waitKey(10) & 0xFF == ord('q'): #break by pressing 'q'
+        break
+cap.release() #releases the video capture
+cv2.destroyAllWindows() #closes any imshow frames
+
+
+#threshold: changing the threshold up or down will impact the detection confidence
+#A higher value will produce a tighter mask a lower value will be more flexible
